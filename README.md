@@ -1,17 +1,31 @@
 # Port.io Discord Bot 🦎
 
-A standalone Discord bot that queries Port.io data using natural language. Ask about animals, health, feedings, deployments, users, or scorecard status directly in Discord.
+A **fully configuration-driven** Discord bot that queries any Port.io instance using natural language. No code changes needed — just edit `config.yaml` to customize for your Port.io setup.
 
-**Deployable to Railway.app in 5 minutes.**
+**Fork-friendly.** Deploy to Railway.app in 5 minutes.
 
 ## Features
 
-- 🦎 **Animal Count**: Total animals in your Port.io database + average health score
-- ❤️ **Health Overview**: Aggregate health scores and at-risk animal count
-- 🍖 **Recent Feedings**: Feeding logs from the last 7 days + acceptance rates
-- ✅ **Deployments**: Latest API and Frontend versions + deployment age
-- 👥 **User Breakdown**: User count by subscription tier (Free, Hobbyist, Pro)
-- 📊 **Scorecard Health**: Service tier ratings (Gold, Silver, Bronze)
+- 🎯 **Configuration-Driven** — All intents and queries defined in `config.yaml`
+- 🔧 **Fully Extensible** — Add new intents/queries without touching Python code
+- 🦎 **Any Port.io Setup** — Works with any blueprints and properties
+- 🚀 **Easy Deployment** — Railway.app, Docker, or local Python
+- 📝 **Interactive Setup** — Optional `setup.py` wizard for non-technical users
+- ⚡ **Async GraphQL** — Fast, responsive queries with proper error handling
+
+## Architecture
+
+```
+config.yaml (user-editable)
+    ↓
+config_parser.py (loads YAML + env vars)
+    ↓
+bot.py (Discord handler)
+    ↓
+port_executor.py (generic Port API queries)
+```
+
+Everything is data-driven. Users customize via YAML; no Python code changes needed.
 
 ## Prerequisites
 
@@ -30,7 +44,7 @@ A standalone Discord bot that queries Port.io data using natural language. Ask a
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/Herp-Ops/port-discord-bot.git
+git clone https://github.com/btotharye/port-discord-bot.git
 cd port-discord-bot
 ```
 
@@ -45,18 +59,42 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 4. Configure Environment Variables
+### 4. Configure the Bot
+
+#### Option A: Interactive Setup (Recommended)
+```bash
+python setup.py
+```
+
+This creates `config.yaml` and `.env` interactively.
+
+#### Option B: Manual Setup
 ```bash
 cp .env.example .env
 ```
 
 Edit `.env` and add your tokens:
 ```
-DISCORD_TOKEN=your_discord_bot_token_here
 PORT_API_TOKEN=your_port_api_token_here
+DISCORD_TOKEN=your_discord_bot_token_here
 ```
 
-### 5. Run the Bot
+### 5. Customize config.yaml (Optional)
+Edit `config.yaml` to add/modify intents and queries:
+
+```yaml
+intents:
+  my_custom_query:
+    keywords: ["my", "custom", "keywords"]
+    blueprint: "MyBlueprint"
+    query_type: "count_with_property"
+    property: "some_property"
+    response: "📊 Result: {count} items, avg: {avg_some_property}"
+```
+
+See [Configuring Intents](#configuring-intents) below.
+
+### 6. Run the Bot
 ```bash
 python bot.py
 ```
@@ -64,6 +102,7 @@ python bot.py
 You should see:
 ```
 ✅ Bot logged in as YourBotName#1234
+📡 Listening on #port-herp-ops
 ```
 
 ## Discord Setup
@@ -78,36 +117,108 @@ You should see:
    - `Send Messages`
    - `Read Message History`
 7. Copy the **OAuth2 URL** (under Scopes) and open it to invite the bot to your server
-8. Create a channel called `#port-herp-ops` (or update `bot.py` to use a different channel name)
+8. Create a channel called `#port-herp-ops` (or change `discord_channel` in `config.yaml`)
+
+## Configuring Intents
+
+All intents are defined in `config.yaml`. You can add custom intents without touching Python code.
+
+### Intent Configuration Structure
+
+```yaml
+intents:
+  intent_name:
+    keywords: ["word1", "word2", "word3"]  # User message must contain any of these
+    blueprint: "YourBlueprint"               # Port blueprint name
+    query_type: "count_with_property"        # See query types below
+    property: "property_name"                # (optional, required for count_with_property)
+    limit: 5                                 # (optional, for list_latest)
+    order_by: "created_at"                   # (optional, for list_latest)
+    response: "📊 Result: {count}"           # Response template with placeholders
+```
+
+### Query Types
+
+#### 1. `count_with_property`
+Count all entities of a blueprint and aggregate/average a numeric property.
+
+**Returns:**
+- `{count}` — Total entity count
+- `{avg_PROPERTY}` — Average value of the property
+
+**Example:**
+```yaml
+animals:
+  keywords: ["animal", "count", "how many"]
+  blueprint: "Animal"
+  query_type: "count_with_property"
+  property: "health_score"
+  response: "🦎 Total Animals: {count} • Avg Health: {avg_health_score}%"
+```
+
+#### 2. `list_latest`
+Get the N latest entities ordered by a field.
+
+**Returns:**
+- `{results}` — Newline-separated list of entities with timestamps
+
+**Example:**
+```yaml
+deployments:
+  keywords: ["deploy", "version", "release"]
+  blueprint: "Deployment"
+  query_type: "list_latest"
+  limit: 5
+  order_by: "created_at"
+  response: "✅ Latest Deployments:\n{results}"
+```
+
+#### 3. `list_all`
+List all entities grouped/counted by a property.
+
+**Returns:**
+- `{results}` — Newline-separated count breakdown
+
+**Example:**
+```yaml
+users:
+  keywords: ["user", "users", "tier"]
+  blueprint: "User"
+  query_type: "list_all"
+  group_by: "subscription_tier"
+  response: "👥 Users by Tier:\n{results}"
+```
+
+#### 4. `list_blueprints`
+List all available blueprints in your Port workspace.
+
+**Returns:**
+- `{blueprints}` — Comma-separated blueprint names
+
+**Example:**
+```yaml
+entities:
+  keywords: ["blueprints", "entities", "available"]
+  query_type: "list_blueprints"
+  response: "📊 Available blueprints: {blueprints}"
+```
 
 ## Using the Bot
 
-Once the bot is running and in your Discord server, send messages in `#port-herp-ops`:
+Once running, send messages in your configured Discord channel:
 
 ```
-# Ask about animals
-"How many animals do we have?"
-→ 🦎 Total Animals: 42 • Avg Health: 87.3%
+User: "How many animals do we have?"
+Bot: 🦎 Total Animals: 42 • Avg Health: 87.3%
 
-# Check health status
-"What's the health overview?"
-→ ❤️ Health Overview: 84.2% • At Risk: 3
+User: "Show recent deployments"
+Bot: ✅ Latest Deployments:
+     • v2.3.1 (2h ago)
+     • v2.3.0 (1d ago)
+     • v2.2.9 (3d ago)
 
-# View recent feedings
-"Show me recent feedings"
-→ 🍖 Recent Feedings: 25 this week • Acceptance: 92.1%
-
-# Check deployments
-"What's the latest deployment?"
-→ ✅ API: v2.3.1 (2h ago) | ✅ Frontend: v1.9.2 (1h ago)
-
-# User breakdown
-"How many users do we have?"
-→ 👥 Users: Free 150 | Hobbyist 32 | Pro 8
-
-# Scorecard status
-"What's our scorecard status?"
-→ 📊 Scorecard: API Gold | Frontend Silver | Landing Bronze
+User: "What blueprints are available?"
+Bot: 📊 Available blueprints: Animal, Deployment, User, Feeding
 ```
 
 ## Deployment to Railway.app
@@ -116,7 +227,7 @@ Once the bot is running and in your Discord server, send messages in `#port-herp
 If not already done:
 ```bash
 git add .
-git commit -m "Initial commit: Port Discord bot"
+git commit -m "Configure Port Discord bot"
 git push origin main
 ```
 
@@ -124,85 +235,145 @@ git push origin main
 1. Go to [railway.app](https://railway.app)
 2. Click **New Project**
 3. Select **Deploy from GitHub repo** → Authorize GitHub
-4. Select `Herp-Ops/port-discord-bot`
+4. Select your fork of `port-discord-bot`
 5. Railway detects the `Dockerfile` automatically
 
 ### 3. Add Environment Variables
 In Railway project settings:
 1. Click **Variables**
 2. Add:
-   - `DISCORD_TOKEN`: your Discord bot token
    - `PORT_API_TOKEN`: your Port.io API token
+   - `DISCORD_TOKEN`: your Discord bot token
 3. Click **Deploy**
 
 ### 4. Monitor
-Railway will build and deploy automatically. Watch logs to confirm:
+Railway will build and deploy automatically. Watch logs:
 ```
 ✅ Bot logged in as YourBotName#1234
+📡 Listening on #port-herp-ops
 ```
 
-**That's it!** Your bot is now live on Railway. 🚀
+Your bot is now live! 🚀
 
-## Architecture
+## Project Structure
 
-### `bot.py`
-Main Discord bot entry point. Listens for messages in `#port-herp-ops`, parses intent, and calls Port client methods.
+```
+port-discord-bot/
+├── config.yaml              # User-editable configuration
+├── bot.py                   # Main Discord bot entry point
+├── config_parser.py         # Loads config.yaml + env vars
+├── port_executor.py         # Generic Port API query executor
+├── setup.py                 # Interactive setup wizard
+├── requirements.txt         # Python dependencies
+├── .env.example             # Template for environment variables
+├── Dockerfile               # Container image for Railway
+└── README.md               # This file
+```
 
-### `port_client.py`
-GraphQL client for Port.io API. Handles all API queries with error handling and async/await for responsiveness.
+### File Responsibilities
 
-### `intent_parser.py`
-Natural language intent detection. Matches message keywords to query types without complex NLP.
+- **`config.yaml`** — User edits this to customize intents/queries
+- **`bot.py`** — Discord event handler, delegates to port_executor
+- **`config_parser.py`** — Loads YAML, expands `${ENV_VAR}` syntax
+- **`port_executor.py`** — Generic GraphQL query builder + executor
+- **`setup.py`** — Interactive CLI wizard to create config files
 
-### `Dockerfile`
-Containerization for Railway.app. Uses `python:3.11-slim` for minimal image size.
+## Customization Examples
 
-## GraphQL Queries
+### Example 1: Track Feeding Acceptance
 
-The bot uses Port.io's GraphQL API. Query structure is based on your Port blueprints:
-- `Animal` → health scores, count
-- `Feeding` → feeding logs, acceptance rates
-- `Deployment` → service versions, deployment timestamps
-- `User` → subscription tier counts
-- `Service` → scorecard scores
+```yaml
+# In config.yaml
+feedings:
+  keywords: ["feeding", "feed", "acceptance", "accepted"]
+  blueprint: "Feeding"
+  query_type: "count_with_property"
+  property: "acceptance_rate"
+  response: "🍖 Feedings: {count} total • Avg Acceptance: {avg_acceptance_rate}%"
+```
 
-**Note:** If your Port schema differs, update GraphQL queries in `port_client.py` to match your blueprint structure.
+Message: `"How's our feeding acceptance?"`
+Bot: `🍖 Feedings: 156 total • Avg Acceptance: 91.3%`
 
-## Error Handling
+### Example 2: List All Deployment Services
 
-The bot gracefully handles:
-- ❌ Port API timeouts (10s timeout)
-- ❌ Missing or invalid tokens
-- ❌ Network errors
-- ❌ Unexpected response formats
+```yaml
+# In config.yaml
+services:
+  keywords: ["service", "services", "list"]
+  blueprint: "Service"
+  query_type: "list_all"
+  group_by: "status"
+  response: "🔧 Services by Status:\n{results}"
+```
 
-If Port API is down, the bot replies with an error message instead of crashing.
+Message: `"What services do we have?"`
+Bot:
+```
+🔧 Services by Status:
+• healthy: 8
+• degraded: 1
+• offline: 0
+```
+
+### Example 3: Custom Blueprint Query
+
+```yaml
+# In config.yaml
+habitats:
+  keywords: ["habitat", "enclosure", "tank"]
+  blueprint: "Habitat"
+  query_type: "count_with_property"
+  property: "temperature"
+  response: "🌡️ Habitats: {count} • Avg Temp: {avg_temperature}°F"
+```
+
+## Troubleshooting
+
+### Bot doesn't respond
+- ✅ Verify `PORT_API_TOKEN` and `DISCORD_TOKEN` in `.env`
+- ✅ Check bot is in the server
+- ✅ Ensure channel name matches `discord_channel` in `config.yaml`
+- ✅ Check bot logs for errors
+
+### "Port API request timed out"
+- ✅ Verify `PORT_API_TOKEN` is correct and active
+- ✅ Check Port.io API status
+- ✅ Ensure your Port workspace is accessible
+
+### "Unknown query type" error
+- ✅ Check `query_type` spelling in `config.yaml`
+- ✅ Valid types: `count_with_property`, `list_latest`, `list_all`, `list_blueprints`
+
+### Bot crashes on startup
+- ✅ Ensure `requirements.txt` dependencies are installed: `pip install -r requirements.txt`
+- ✅ Check `.env` file has both tokens
+- ✅ Check `config.yaml` exists and is valid YAML
+
+### GraphQL errors
+- ✅ Verify blueprint name exists in your Port workspace
+- ✅ Verify property name exists in that blueprint
+- ✅ Try simplifying the query (start with `count_with_property`)
+
+## Architecture Advantages
+
+### ✅ For Users
+- **No coding required** — customize via YAML
+- **Fork-friendly** — git clone → edit config.yaml → deploy
+- **Extensible** — add intents without touching Python
+
+### ✅ For Developers
+- **Configuration-driven** — clear separation of data vs. logic
+- **Testable** — each component (parser, executor) is independently testable
+- **Maintainable** — adding new query types doesn't require modifying bot.py
 
 ## Contributing
 
 1. Fork the repo
 2. Create a feature branch: `git checkout -b feature/my-feature`
-3. Commit: `git commit -am "Add my feature"`
+3. Commit: `git commit -am "Add feature"`
 4. Push: `git push origin feature/my-feature`
 5. Open a Pull Request
-
-## Troubleshooting
-
-### Bot doesn't respond
-- Verify `DISCORD_TOKEN` is correct
-- Check bot is in the server
-- Ensure `#port-herp-ops` channel exists
-- Check bot logs for errors
-
-### "Port API request timed out"
-- Verify `PORT_API_TOKEN` is correct
-- Check Port.io API status
-- Verify your Port workspace is accessible
-
-### Bot crashes on startup
-- Ensure `requirements.txt` dependencies are installed
-- Check `.env` file has both tokens
-- Review bot logs for specific errors
 
 ## License
 
@@ -210,8 +381,11 @@ MIT License — see LICENSE file for details.
 
 ## Support
 
-For issues or feature requests, open a GitHub issue or check Discord logs for detailed error messages.
+For issues or feature requests:
+1. Check this README's Troubleshooting section
+2. Review `config.yaml` for syntax errors
+3. Open a GitHub issue with error logs and configuration
 
 ---
 
-**Built with ❤️ for Herp-Ops**
+**Built with ❤️ for flexible Port.io automation**

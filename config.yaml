@@ -1,0 +1,56 @@
+# config.yaml - Configuration for your Port.io Discord Bot
+# Edit this file to customize the bot for your Port.io instance
+
+# API credentials (read from environment variables)
+port_api_token: ${PORT_API_TOKEN}
+discord_token: ${DISCORD_TOKEN}
+
+# Discord channel to listen on
+discord_channel: "port-herp-ops"
+
+# Intent definitions - users customize these for their setup
+intents:
+  # Example: Query Animal blueprint
+  animals:
+    keywords: ["animal", "reptile", "how many", "count animals", "total animals"]
+    blueprint: "Animal"
+    query_type: "count_with_property"
+    property: "health_score"
+    response: "🦎 Total Animals: {count} • Avg Health: {avg_health_score}%"
+  
+  # Example: Query Health records
+  health:
+    keywords: ["health", "score", "overview", "collection", "condition", "status"]
+    blueprint: "Animal"
+    query_type: "count_with_property"
+    property: "health_score"
+    response: "❤️ Health Overview: {avg_health_score}% • Total: {count}"
+  
+  # Example: Query Feeding logs
+  feedings:
+    keywords: ["feeding", "feed", "recent", "logs", "feedings", "accepted", "acceptance"]
+    blueprint: "Feeding"
+    query_type: "count_with_property"
+    property: "acceptance_rate"
+    response: "🍖 Recent Feedings: {count} • Avg Acceptance: {avg_acceptance_rate}%"
+  
+  # Example: Query Deployments
+  deployments:
+    keywords: ["deploy", "deployment", "version", "release", "api", "frontend"]
+    blueprint: "Deployment"
+    query_type: "list_latest"
+    limit: 5
+    response: "✅ Latest Deployments:\n{results}"
+  
+  # Example: Query Users
+  users:
+    keywords: ["user", "users", "tier", "subscription", "how many users", "signup"]
+    blueprint: "User"
+    query_type: "list_all"
+    response: "👥 Users:\n{results}"
+  
+  # Generic: List all blueprints
+  entities:
+    keywords: ["entities", "list", "show all", "blueprints", "available"]
+    query_type: "list_blueprints"
+    response: "📊 Available blueprints: {blueprints}"
